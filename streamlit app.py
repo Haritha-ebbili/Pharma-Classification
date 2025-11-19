@@ -4,8 +4,8 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier # New Model Import
-from sklearn.svm import SVC # New Model Import
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
@@ -24,7 +24,6 @@ class CustomCategoricalEncoder(BaseEstimator, TransformerMixin):
         return self
     def transform(self, X):
         X_encoded = X.copy()
-        # Map 'm' to 1 and 'f' to 0
         X_encoded.loc[:, 'sex'] = X_encoded['sex'].map({'m': 1, 'f': 0}).fillna(0)
         return X_encoded.values
 
@@ -35,6 +34,10 @@ def load_data_and_train_models(file_path):
     try:
         # 1. Load Data
         df = pd.read_csv(file_path, sep=';')
+        
+        # FIX: Strip whitespace from all column names immediately after loading
+        df.columns = df.columns.str.strip() 
+        
         df = df.replace('NA', np.nan)
         for col in df.columns:
             if col not in ['category', 'sex']:
@@ -46,17 +49,12 @@ def load_data_and_train_models(file_path):
         y = df['category']
         X = df.drop('category', axis=1)
 
-        # 3. Feature Preparation and Cleaning
+        # 3. Feature Preparation
+        # Since columns are stripped, numerical_features list will now be clean
         numerical_features = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
         categorical_features = ['sex']
         
-        # Handling the trailing space in the column name (observed in previous steps)
-        if 'gamma_glutamyl_transferase ' in numerical_features:
-             numerical_features.remove('gamma_glutamyl_transferase ')
-             X.rename(columns={'gamma_glutamyl_transferase ': 'gamma_glutamyl_transferase'}, inplace=True)
-             numerical_features.append('gamma_glutamyl_transferase')
-        
-        feature_names = numerical_features + categorical_features
+        feature_names = numerical_features + categorical_features # This list is now clean
 
         # 4. Define Preprocessing Pipeline
         numerical_pipeline = Pipeline(steps=[
@@ -72,13 +70,13 @@ def load_data_and_train_models(file_path):
             remainder='passthrough'
         )
         
-        # 5. Define All Models to Train (Expanded List)
+        # 5. Define All Models to Train
         models = {
             'Logistic Regression': LogisticRegression(random_state=42),
             'Random Forest Classifier': RandomForestClassifier(random_state=42),
             'K-Nearest Neighbors': KNeighborsClassifier(),
-            'Decision Tree Classifier': DecisionTreeClassifier(random_state=42), # Added
-            'Support Vector Machine (SVC)': SVC(probability=True, random_state=42) # Added (probability=True is required for predict_proba)
+            'Decision Tree Classifier': DecisionTreeClassifier(random_state=42),
+            'Support Vector Machine (SVC)': SVC(probability=True, random_state=42)
         }
         
         trained_pipelines = {}
@@ -117,7 +115,6 @@ else:
             list(trained_models.keys())
         )
         
-        # Get the selected model pipeline
         selected_model = trained_models[model_choice]
 
         # 2. Input Section
@@ -126,7 +123,7 @@ else:
         col1, col2, col3 = st.columns(3)
         input_data = {}
         
-        # Helper dictionary for all feature labels and typical ranges
+        # Keys here are the clean column names, which now match feature_names
         feature_details = {
             'age': ('Age (years)', col1, st.slider, (18, 90, 45)),
             'sex': ('Sex', col1, st.radio, (['m', 'f'], 0)), 
@@ -154,7 +151,7 @@ else:
             # 3. Create a DataFrame from the user input
             input_df = pd.DataFrame([input_data])
             
-            # Ensure columns are in the correct order and names
+            # The columns in input_df now match the feature_names list, resolving the KeyError
             input_df = input_df[feature_names]
             
             # 4. Make Prediction
