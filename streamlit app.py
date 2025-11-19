@@ -99,13 +99,14 @@ if uploaded_file:
         st.write(f"Training **{model_name}** ...")
         
         grid = GridSearchCV(model, params[model_name], cv=5, scoring='accuracy')
-        grid.fit(X_train_scaled, y_train)
+        grid.fit(X_train, y_train)
 
         best_model = grid.best_estimator_
         trained_models[model_name] = best_model
 
         # Predictions
-        y_pred = best_model.predict(X_test_scaled)
+        y_pred = best_model.predict(X_test)
+        y_prob = grid.predict_proba(X_test)[:, 1]
 
         # Metrics
         acc = accuracy_score(y_test, y_pred)
