@@ -39,39 +39,30 @@ if uploaded_file:
     y = df[target]
 
     # --------------------------
-    # CLEAN NUMERIC COLUMNS
-    # --------------------------
-    # Step 1: Convert numeric-looking columns
-    for col in X.columns:
-        X[col] = pd.to_numeric(X[col], errors="ignore")
-
+    # Ensure all columns are clean BEFORE scaling
+    # Recalculate numeric columns after one-hot encoding
     numeric_cols = X.select_dtypes(include=[np.number]).columns.tolist()
-    categorical_cols = [col for col in X.columns if col not in numeric_cols]
 
-    # Step 2: One-hot encode categoricals
-    if len(categorical_cols) > 0:
-        X = pd.get_dummies(X, columns=categorical_cols, drop_first=True)
-
-    # Step 3: Convert numeric cols properly
+    # Convert all numeric columns safely
     for col in numeric_cols:
         X[col] = pd.to_numeric(X[col], errors="coerce")
 
-    # Step 4: Fill NaN
+    # Fill NaN values with median
     X[numeric_cols] = X[numeric_cols].fillna(X[numeric_cols].median())
 
-    # --------------------------
-    # TRAIN-TEST SPLIT
-    # --------------------------
+    # Split AFTER cleaning
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
 
-    # --------------------------
-    # SCALING
-    # --------------------------
+    # Final numeric columns again (some models change dtype)
+    numeric_cols = X_train.select_dtypes(include=[np.number]).columns.tolist()
+
+    # Safe scaling that NEVER breaks
     scaler = StandardScaler()
-    X_train[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
-    X_test[numeric_cols] = scaler.transform(X_test[numeric_cols])
+    X_train.loc[:, numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
+    X_test.loc[:, numeric_cols] = scaler.transform(X_test[numeric_cols])
+
 
     # --------------------------
     # MODELS + GRID SEARCH
