@@ -2,5 +2,5 @@ Streamlit
 pandas
 numpy
 matplotlib
-Scikit-learn
+scikit-learn=1.4.2
 joblib
