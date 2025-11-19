@@ -98,7 +98,7 @@ if uploaded_file:
     for model_name, model in models.items():
         st.write(f"Training **{model_name}** ...")
         
-        grid = GridSearchCV(model, params[model_name], cv=5, scoring='accuracy')
+        grid = GridSearchCV(model, params[model_name], cv=cv, scoring='accuracy')
         grid.fit(X_train, y_train)
 
         best_model = grid.best_estimator_
