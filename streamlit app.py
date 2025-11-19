@@ -19,25 +19,37 @@ st.title("🩺 Liver Disease Classification – Multi-Model Comparison")
 # -------------------------
 @st.cache_data
 def load_data():
-    return pd.read_csv("Liver_data.csv", sep=";")  # FIXED: semicolon separator
+    df = pd.read_csv("Liver_data.csv", sep=";")
+    df.columns = df.columns.str.strip()  # remove trailing spaces
+    return df
 
 df = load_data()
 st.write("### Dataset Preview", df.head())
+st.write("### Columns:", df.columns.tolist())
 
 # -------------------------
 # 2. PREPROCESSING
 # -------------------------
+
+# Your target column is ALWAYS "Dataset" in this file
 target_col = "Dataset"
+
+if target_col not in df.columns:
+    st.error(f"❌ ERROR: '{target_col}' column not found in dataset!")
+    st.stop()
 
 X = df.drop(columns=[target_col])
 y = df[target_col]
 
-# Categorical + numeric separation
-categorical_cols = X.select_dtypes(include=['object']).columns
-numeric_cols = X.select_dtypes(include=['float64', 'int64']).columns
+# Remove spaces in column names
+X.columns = X.columns.str.strip()
 
-# One-hot encoding only if needed
-if len(categorical_cols) > 0:
+# Identify categorical and numeric columns properly
+categorical_cols = X.select_dtypes(include=['object']).columns.tolist()
+numeric_cols = X.select_dtypes(include=[np.number]).columns.tolist()
+
+# One-hot encoding categorical columns
+if categorical_cols:
     X = pd.get_dummies(X, columns=categorical_cols, drop_first=True)
 
 # Train/test split
@@ -45,11 +57,13 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 
-# Scaling numeric features
+# Scale ONLY numeric columns
 scaler = StandardScaler()
-if len(numeric_cols) > 0:
-    X_train[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
-    X_test[numeric_cols] = scaler.transform(X_test[numeric_cols])
+
+numeric_cols_after_encoding = X_train.select_dtypes(include=[np.number]).columns.tolist()
+
+X_train[numeric_cols_after_encoding] = scaler.fit_transform(X_train[numeric_cols_after_encoding])
+X_test[numeric_cols_after_encoding] = scaler.transform(X_test[numeric_cols_after_encoding])
 
 # -------------------------
 # 3. MODELS + PARAMETERS
@@ -105,14 +119,13 @@ for name, model in models.items():
     grid.fit(X_train, y_train)
 
     best_model = grid.best_estimator_
-
     y_pred = best_model.predict(X_test)
 
-    # Metrics
+    # binary classification → use average='binary'
     acc = accuracy_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    rec = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
+    pre = precision_score(y_test, y_pred, average='binary')
+    rec = recall_score(y_test, y_pred, average='binary')
+    f1 = f1_score(y_test, y_pred, average='binary')
 
     results.append([
         name, acc, pre, rec, f1, grid.best_score_
