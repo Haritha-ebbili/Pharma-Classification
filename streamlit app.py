@@ -51,9 +51,12 @@ if uploaded_file:
 
     numeric_cols = X.select_dtypes(include=['int64', 'float64']).columns
     categorical_cols = X.select_dtypes(include=['object', 'bool']).columns
-
-    # One-hot encoding of categorical columns
-    X = pd.get_dummies(X, columns=categorical_cols, drop_first=True)
+    
+    # Handle categorical variables safely
+    if len(categorical_cols) > 0:
+        X = pd.get_dummies(X, columns=categorical_cols, drop_first=True)
+    else:
+        X = X.copy()
 
     # Split after encoding
     X_train, X_test, y_train, y_test = train_test_split(
