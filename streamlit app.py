@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier # New Model Import
+from sklearn.svm import SVC # New Model Import
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
@@ -17,7 +18,6 @@ st.set_page_config(page_title="Multi-Model Liver Disease Prediction App", layout
 FILE_NAME = "Liver_data.csv"
 
 # --- Custom Preprocessing Class ---
-# Custom encoder for 'sex' since ColumnTransformer needs numerical output
 class CustomCategoricalEncoder(BaseEstimator, TransformerMixin):
     """Encodes 'sex' column ('m'->1, 'f'->0)."""
     def fit(self, X, y=None):
@@ -26,7 +26,7 @@ class CustomCategoricalEncoder(BaseEstimator, TransformerMixin):
         X_encoded = X.copy()
         # Map 'm' to 1 and 'f' to 0
         X_encoded.loc[:, 'sex'] = X_encoded['sex'].map({'m': 1, 'f': 0}).fillna(0)
-        return X_encoded.values # Return as a NumPy array for compatibility
+        return X_encoded.values
 
 # --- Data Loading and Multi-Model Training Function ---
 @st.cache_resource
@@ -41,15 +41,21 @@ def load_data_and_train_models(file_path):
                 df[col] = pd.to_numeric(df[col], errors='coerce')
         
         # 2. Target Variable Encoding (y)
-        # 'cirrhosis' -> 1 (Disease Present), 'no_disease' -> 0 (No Disease)
         le = LabelEncoder()
         df['category'] = le.fit_transform(df['category'])
         y = df['category']
         X = df.drop('category', axis=1)
 
-        # 3. Feature Preparation
+        # 3. Feature Preparation and Cleaning
         numerical_features = X.select_dtypes(include=['int64', 'float64']).columns.tolist()
         categorical_features = ['sex']
+        
+        # Handling the trailing space in the column name (observed in previous steps)
+        if 'gamma_glutamyl_transferase ' in numerical_features:
+             numerical_features.remove('gamma_glutamyl_transferase ')
+             X.rename(columns={'gamma_glutamyl_transferase ': 'gamma_glutamyl_transferase'}, inplace=True)
+             numerical_features.append('gamma_glutamyl_transferase')
+        
         feature_names = numerical_features + categorical_features
 
         # 4. Define Preprocessing Pipeline
@@ -66,11 +72,13 @@ def load_data_and_train_models(file_path):
             remainder='passthrough'
         )
         
-        # 5. Define Models to Train
+        # 5. Define All Models to Train (Expanded List)
         models = {
             'Logistic Regression': LogisticRegression(random_state=42),
             'Random Forest Classifier': RandomForestClassifier(random_state=42),
-            'K-Nearest Neighbors': KNeighborsClassifier()
+            'K-Nearest Neighbors': KNeighborsClassifier(),
+            'Decision Tree Classifier': DecisionTreeClassifier(random_state=42), # Added
+            'Support Vector Machine (SVC)': SVC(probability=True, random_state=42) # Added (probability=True is required for predict_proba)
         }
         
         trained_pipelines = {}
@@ -119,10 +127,9 @@ else:
         input_data = {}
         
         # Helper dictionary for all feature labels and typical ranges
-        # Keys are the original column names from the CSV
         feature_details = {
             'age': ('Age (years)', col1, st.slider, (18, 90, 45)),
-            'sex': ('Sex', col1, st.radio, (['m', 'f'], 'm')),
+            'sex': ('Sex', col1, st.radio, (['m', 'f'], 0)), 
             'albumin': ('Albumin (g/L)', col2, st.number_input, (20.0, 60.0, 40.0, 0.1)),
             'alkaline_phosphatase': ('Alkaline Phosphatase (U/L)', col2, st.number_input, (0.0, 1000.0, 80.0, 1.0)),
             'alanine_aminotransferase': ('Alanine Aminotransferase (U/L)', col2, st.number_input, (0.0, 500.0, 30.0, 1.0)),
@@ -131,14 +138,13 @@ else:
             'cholinesterase': ('Cholinesterase (kU/L)', col3, st.number_input, (0.0, 20.0, 8.0, 0.01)),
             'cholesterol': ('Cholesterol (mmol/L)', col1, st.number_input, (1.0, 10.0, 4.0, 0.01)),
             'creatinina': ('Creatinina ($\mu$mol/L)', col2, st.number_input, (50.0, 200.0, 90.0, 1.0)),
-            'gamma_glutamyl_transferase ': ('Gamma-Glutamyl Transferase (U/L)', col3, st.number_input, (10.0, 500.0, 50.0, 1.0)),
+            'gamma_glutamyl_transferase': ('Gamma-Glutamyl Transferase (U/L)', col3, st.number_input, (10.0, 500.0, 50.0, 1.0)), 
             'protein': ('Protein (g/L)', col1, st.number_input, (50.0, 100.0, 70.0, 0.1)),
         }
 
         # Dynamically create input widgets
         for feature, (label, col, widget_func, args) in feature_details.items():
             with col:
-                # The unpack operator (*) is used to pass the tuple of arguments to the widget function
                 input_data[feature] = widget_func(label, *args)
 
 
@@ -148,11 +154,10 @@ else:
             # 3. Create a DataFrame from the user input
             input_df = pd.DataFrame([input_data])
             
-            # Ensure columns are in the correct order for the model
+            # Ensure columns are in the correct order and names
             input_df = input_df[feature_names]
             
             # 4. Make Prediction
-            # The selected_model pipeline handles all the preprocessing and prediction
             prediction = selected_model.predict(input_df)[0]
             prediction_proba = selected_model.predict_proba(input_df)[0]
 
