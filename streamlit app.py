@@ -46,28 +46,28 @@ if uploaded_file:
     X = df.drop(columns=[target])
     y = df[target]
 
-    # FIX: HANDLE CATEGORICAL + NUMERIC COLUMNS
-    # --------------------------------------------
+    # Convert columns that look numeric into numeric
+    for col in X.columns:
+        X[col] = pd.to_numeric(X[col], errors='ignore')
 
-    numeric_cols = X.select_dtypes(include=['int64', 'float64']).columns
-    categorical_cols = X.select_dtypes(include=['object', 'bool']).columns
-    
-    # Handle categorical variables safely
+    # Identify numeric and categorical columns
+    numeric_cols = X.select_dtypes(include=[np.number]).columns.tolist()
+    categorical_cols = [col for col in X.columns if col not in numeric_cols]
+
+    # One-hot encode categorical columns (if any)
     if len(categorical_cols) > 0:
         X = pd.get_dummies(X, columns=categorical_cols, drop_first=True)
-    else:
-        X = X.copy()
 
     # Split after encoding
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
-        )
+    )
 
-    # Scale numerical columns only
-    scaler = StandardScaler()
-    X_train[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
-    X_test[numeric_cols] = scaler.transform(X_test[numeric_cols])
-
+    # Scale numeric columns only (if exist)
+    if len(numeric_cols) > 0:
+        scaler = StandardScaler()
+        X_train[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
+        X_test[numeric_cols] = scaler.transform(X_test[numeric_cols])
 
     # --------------------------------------------
     # MODEL DEFINITIONS + GRID SEARCH
