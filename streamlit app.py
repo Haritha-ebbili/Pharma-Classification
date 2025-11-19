@@ -20,7 +20,7 @@ from sklearn.svm import SVC
 st.title("📊 Pharma Classification")
 st.write("Upload your dataset and get predictions + model comparison + visualizations")
 
-uploaded_file = st.file_uploader("Upload CSV dataset", type=["csv"])
+uploaded_file = st.file_uploader("Liver_data.csv", sep=";")
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
