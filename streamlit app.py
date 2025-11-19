@@ -4,21 +4,27 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 
-st.title("Liver Disease Prediction (Random Forest — No PKL Files)")
+st.title("Liver Disease Prediction")
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Liver_data.csv", sep=';')
+    # Load dataset
+    df = pd.read_csv("Liver_data.csv", sep=None, engine="python")
 
-    # Strip column names
+    # Clean column names (remove spaces)
     df.columns = df.columns.str.strip()
-    st.write(df.columns.tolist())
 
-    # Convert all numeric columns (except category, sex)
+    # Fix last two weird columns
+    df.rename(columns={
+        "gamma_glutamyl_transferase": "gamma_glutamyl_transferase",
+        "protein": "protein"
+    }, inplace=True)
+
+    # Convert numeric columns automatically
     numeric_cols = df.columns.drop(["category", "sex"])
     df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors="coerce")
 
-    # Fix "sex" column
+    # Map sex
     df["sex"] = (
         df["sex"]
         .astype(str)
@@ -27,7 +33,7 @@ def load_data():
         .map({"m": 1, "male": 1, "f": 0, "female": 0})
     )
 
-    # ---------- FIX CATEGORY COLUMN ----------
+    # Ensure valid category values (A = disease=1, no_disease=0)
     df["category"] = (
         df["category"]
         .astype(str)
@@ -36,12 +42,9 @@ def load_data():
         .map({"disease": 1, "no_disease": 0})
     )
 
-    # Remove rows where category mapping failed
-    df = df.dropna(subset=["category"])
+    df = df.dropna()   # Drop invalid rows
     df["category"] = df["category"].astype(int)
-    # ------------------------------------------
 
-    df = df.dropna()
     return df
 
 
@@ -59,40 +62,39 @@ X_train, X_test, y_train, y_test = train_test_split(
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 
-# Train Random Forest
+# Train model
 model = RandomForestClassifier(random_state=42)
 model.fit(X_train_scaled, y_train)
 
+# --------------------------
+# USER INPUT SECTION
+# --------------------------
 
-# --------------------------------------------------
-# Streamlit User Input Section
-# --------------------------------------------------
+st.header("Patient Inputs")
 
-st.header("Enter Patient Details")
-
-# default values (median of each column)
 defaults = X.median()
 
+# All fields EXACTLY match your dataset
 age = st.number_input("Age", value=float(defaults["age"]))
 sex = st.selectbox("Sex", [0, 1], format_func=lambda x: "Male" if x == 1 else "Female")
-
-total_bilirubin = st.number_input("Total Bilirubin", value=float(defaults["total_bilirubin"]))
-direct_bilirubin = st.number_input("Direct Bilirubin", value=float(defaults["direct_bilirubin"]))
-alk_phosphate = st.number_input("Alkaline Phosphate", value=float(defaults["alk_phosphate"]))
-sgpt = st.number_input("SGPT", value=float(defaults["sgpt"]))
-sgot = st.number_input("SGOT", value=float(defaults["sgot"]))
-total_proteins = st.number_input("Total Proteins", value=float(defaults["total_proteins"]))
 albumin = st.number_input("Albumin", value=float(defaults["albumin"]))
-ag_ratio = st.number_input("A/G Ratio", value=float(defaults["ag_ratio"]))
+alk_phos = st.number_input("Alkaline Phosphatase", value=float(defaults["alkaline_phosphatase"]))
+alt = st.number_input("Alanine Aminotransferase", value=float(defaults["alanine_aminotransferase"]))
+ast = st.number_input("Aspartate Aminotransferase", value=float(defaults["aspartate_aminotransferase"]))
+bilirubin = st.number_input("Bilirubin", value=float(defaults["bilirubin"]))
+cholinesterase = st.number_input("Cholinesterase", value=float(defaults["cholinesterase"]))
+cholesterol = st.number_input("Cholesterol", value=float(defaults["cholesterol"]))
+creatinina = st.number_input("Creatinine", value=float(defaults["creatinina"]))
+g_gt = st.number_input("Gamma Glutamyl Transferase", value=float(defaults["gamma_glutamyl_transferase"]))
+protein = st.number_input("Protein", value=float(defaults["protein"]))
 
-# Collect input into DF
+# Construct input row
 input_data = pd.DataFrame([[
-    age, sex, total_bilirubin, direct_bilirubin,
-    alk_phosphate, sgpt, sgot, total_proteins,
-    albumin, ag_ratio
+    age, sex, albumin, alk_phos, alt, ast, bilirubin,
+    cholinesterase, cholesterol, creatinina, g_gt, protein
 ]], columns=X.columns)
 
-# Scale input
+# Scale
 input_scaled = scaler.transform(input_data)
 
 # Predict
@@ -100,6 +102,6 @@ prediction = model.predict(input_scaled)[0]
 
 if st.button("Predict"):
     if prediction == 1:
-        st.error("⚠️ The model predicts: **Disease**")
+        st.error("⚠️ Model Prediction: LIVER DISEASE")
     else:
-        st.success("✅ The model predicts: **No Disease**")
+        st.success("✅ Model Prediction: NO DISEASE")
