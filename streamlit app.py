@@ -12,6 +12,7 @@ def load_data():
 
     # Strip column names
     df.columns = df.columns.str.strip()
+    st.write(df.columns.tolist())
 
     # Convert all numeric columns (except category, sex)
     numeric_cols = df.columns.drop(["category", "sex"])
