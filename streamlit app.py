@@ -46,15 +46,25 @@ if uploaded_file:
     X = df.drop(columns=[target])
     y = df[target]
 
-    # Train-test split
+    # FIX: HANDLE CATEGORICAL + NUMERIC COLUMNS
+    # --------------------------------------------
+
+    numeric_cols = X.select_dtypes(include=['int64', 'float64']).columns
+    categorical_cols = X.select_dtypes(include=['object', 'bool']).columns
+
+    # One-hot encoding of categorical columns
+    X = pd.get_dummies(X, columns=categorical_cols, drop_first=True)
+
+    # Split after encoding
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
-    )
+        )
 
-    # Scaling
+    # Scale numerical columns only
     scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
+    X_train[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
+    X_test[numeric_cols] = scaler.transform(X_test[numeric_cols])
+
 
     # --------------------------------------------
     # MODEL DEFINITIONS + GRID SEARCH
