@@ -1,150 +1,154 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import pickle
 
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
 
-st.title("🩺 Liver Disease Classification – Multi-Model Comparison")
+from sklearn.metrics import accuracy_score
 
-# -------------------------
-# 1. LOAD DATA
-# -------------------------
-@st.cache_data
-def load_data():
-    df = pd.read_csv("Liver_data.csv", sep=";")
-    df.columns = df.columns.str.strip()  # remove trailing spaces
-    return df
-
-df = load_data()
-st.write("### Dataset Preview", df.head())
-st.write("### Columns:", df.columns.tolist())
+st.title("🩺 Liver Disease Classification – Save Best Model (Pickle)")
 
 # -------------------------
-# 2. PREPROCESSING
+# 1. UPLOAD FILE
 # -------------------------
+uploaded_file = st.file_uploader("Upload Liver_data.csv", type=["csv"])
 
-# Your target column is ALWAYS "Dataset" in this file
-target_col = "Dataset"
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+    st.write("### 📌 Dataset Preview")
+    st.dataframe(df.head())
 
-if target_col not in df.columns:
-    st.error(f"❌ ERROR: '{target_col}' column not found in dataset!")
-    st.stop()
+    # -------------------------
+    # 2. TARGET COLUMN DETECTION
+    # -------------------------
+    possible_targets = ["Dataset", "dataset", "Target", "Label", "Outcome"]
+    target_col = None
 
-X = df.drop(columns=[target_col])
-y = df[target_col]
+    for col in df.columns:
+        if col.lower() in [t.lower() for t in possible_targets]:
+            target_col = col
+            break
 
-# Remove spaces in column names
-X.columns = X.columns.str.strip()
+    if target_col is None:
+        st.error("❌ ERROR: Target column not found! Please rename the target column to 'Dataset'")
+        st.stop()
 
-# Identify categorical and numeric columns properly
-categorical_cols = X.select_dtypes(include=['object']).columns.tolist()
-numeric_cols = X.select_dtypes(include=[np.number]).columns.tolist()
+    st.success(f"✔ Target column detected: {target_col}")
 
-# One-hot encoding categorical columns
-if categorical_cols:
-    X = pd.get_dummies(X, columns=categorical_cols, drop_first=True)
+    # -------------------------
+    # 3. SPLIT FEATURES & TARGET
+    # -------------------------
+    X = df.drop(columns=[target_col])
+    y = df[target_col]
 
-# Train/test split
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
+    X = pd.get_dummies(X, drop_first=True)
 
-# Scale ONLY numeric columns
-scaler = StandardScaler()
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
 
-numeric_cols_after_encoding = X_train.select_dtypes(include=[np.number]).columns.tolist()
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
 
-X_train[numeric_cols_after_encoding] = scaler.fit_transform(X_train[numeric_cols_after_encoding])
-X_test[numeric_cols_after_encoding] = scaler.transform(X_test[numeric_cols_after_encoding])
-
-# -------------------------
-# 3. MODELS + PARAMETERS
-# -------------------------
-models = {
-    "Logistic Regression": LogisticRegression(max_iter=2000),
-    "Random Forest": RandomForestClassifier(),
-    "Decision Tree": DecisionTreeClassifier(),
-    "KNN": KNeighborsClassifier(),
-    "SVM": SVC()
-}
-
-params = {
-    "Logistic Regression": {
-        "C": [0.1, 1, 10],
-        "solver": ["liblinear"]
-    },
-
-    "Random Forest": {
-        "n_estimators": [50, 100],
-        "max_depth": [3, 5, None]
-    },
-
-    "Decision Tree": {
-        "max_depth": [3, 5, 10, None],
-        "criterion": ["gini", "entropy"]
-    },
-
-    "KNN": {
-        "n_neighbors": [3, 5, 7, 9],
-        "weights": ["uniform", "distance"]
-    },
-
-    "SVM": {
-        "C": [0.1, 1, 10],
-        "kernel": ["rbf", "linear"],
-        "gamma": ["scale", "auto"]
+    # -------------------------
+    # 4. MODELS + PARAMS
+    # -------------------------
+    models = {
+        "Logistic Regression": LogisticRegression(max_iter=2000),
+        "KNN": KNeighborsClassifier(),
+        "SVM": SVC(),
+        "Random Forest": RandomForestClassifier(),
+        "Decision Tree": DecisionTreeClassifier(),
     }
-}
 
-cv = 5  # k-fold cross validation
+    params = {
+        "Logistic Regression": {
+            "C": [0.1, 1, 10],
+            "solver": ["liblinear"]
+        },
+        "KNN": {
+            "n_neighbors": [3, 5, 7, 9],
+            "weights": ["uniform", "distance"]
+        },
+        "SVM": {
+            "C": [0.1, 1, 10],
+            "kernel": ["linear", "rbf"],
+            "gamma": ["scale", "auto"]
+        },
+        "Random Forest": {
+            "n_estimators": [50, 100, 200],
+            "max_depth": [3, 5, 10, None]
+        },
+        "Decision Tree": {
+            "max_depth": [3, 5, 10, None],
+            "criterion": ["gini", "entropy"]
+        }
+    }
 
-# -------------------------
-# 4. TRAIN + EVALUATE
-# -------------------------
-results = []
-st.write("## 🔍 Training Models...")
+    # -------------------------
+    # 5. TRAIN MODELS
+    # -------------------------
+    results = []
+    best_model_object = None
+    best_accuracy = -1
+    best_model_name = ""
 
-for name, model in models.items():
-    st.write(f"### Training {name}...")
+    st.write("### ⚙ Training Models with GridSearchCV...")
 
-    grid = GridSearchCV(model, params[name], cv=cv, scoring="accuracy")
-    grid.fit(X_train, y_train)
+    for model_name, model in models.items():
+        st.write(f"### 🔍 Training {model_name}...")
 
-    best_model = grid.best_estimator_
-    y_pred = best_model.predict(X_test)
+        grid = GridSearchCV(model, params[model_name], cv=5, scoring='accuracy')
+        grid.fit(X_train, y_train)
 
-    # binary classification → use average='binary'
-    acc = accuracy_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred, average='binary')
-    rec = recall_score(y_test, y_pred, average='binary')
-    f1 = f1_score(y_test, y_pred, average='binary')
+        best_model = grid.best_estimator_
+        y_pred = best_model.predict(X_test)
 
-    results.append([
-        name, acc, pre, rec, f1, grid.best_score_
+        acc = accuracy_score(y_test, y_pred)
+
+        results.append([model_name, acc, grid.best_score_])
+
+        # Track best model
+        if acc > best_accuracy:
+            best_accuracy = acc
+            best_model_object = best_model
+            best_model_name = model_name
+
+    # -------------------------
+    # 6. SHOW RESULTS TABLE
+    # -------------------------
+    results_df = pd.DataFrame(results, columns=[
+        "Model", "Test Accuracy", "CV Mean Accuracy"
     ])
 
-# -------------------------
-# 5. COMPARISON TABLE
-# -------------------------
-results_df = pd.DataFrame(results, columns=[
-    "Model", "Accuracy", "Precision", "Recall", "F1 Score", "CV Mean Accuracy"
-])
-
-st.write("## 📊 Model Comparison Table")
-st.dataframe(
-    results_df.style.format({
-        "Accuracy": "{:.4f}",
-        "Precision": "{:.4f}",
-        "Recall": "{:.4f}",
-        "F1 Score": "{:.4f}",
+    st.write("## 📊 Model Comparison")
+    st.dataframe(results_df.style.format({
+        "Test Accuracy": "{:.4f}",
         "CV Mean Accuracy": "{:.4f}"
-    })
-)
+    }))
+
+    # -------------------------
+    # 7. SAVE BEST MODEL (PICKLE)
+    # -------------------------
+    st.write("## 💾 Save Best Model")
+
+    st.success(f"🏆 Best Model: **{best_model_name}** with accuracy {best_accuracy:.4f}")
+
+    # Convert model to pickle bytes
+    pickle_bytes = pickle.dumps(best_model_object)
+
+    st.download_button(
+        label="⬇ Download Best Model (best_model.pkl)",
+        data=pickle_bytes,
+        file_name="best_model.pkl",
+        mime="application/octet-stream"
+    )
