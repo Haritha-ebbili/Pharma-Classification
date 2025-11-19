@@ -12,7 +12,20 @@ def load_model():
     label_encoder = joblib.load('label_encoder.pkl')
     return model, scaler, label_encoder
 
-model, scaler, label_encoder = load_model()
+# Attempt to load from root or /models folder
+
+import os
+
+def safe_load(path_options):
+    for p in path_options:
+        if os.path.exists(p):
+            return joblib.load(p)
+    raise FileNotFoundError(f"None of the paths exist: {path_options}")
+
+model = safe_load(['random_forest_model.pkl', 'models/random_forest_model.pkl'])
+scaler = safe_load(['scaler.pkl', 'models/scaler.pkl'])
+label_encoder = safe_load(['label_encoder.pkl', 'models/label_encoder.pkl'])
+()
 
 st.set_page_config(page_title="Liver Disease Prediction", layout="wide")
 st.title("Liver Disease Prediction App")
