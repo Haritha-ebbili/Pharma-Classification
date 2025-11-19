@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 
-st.title("Liver Disease Detection Using Random Forest Model")
+st.title("Liver Disease Detection")
 
 # ---------------------------------------------------------
 # LOAD AND CLEAN DATA
