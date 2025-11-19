@@ -25,7 +25,7 @@ from sklearn.svm import SVC
 # --------------------------------------------
 # STREAMLIT UI
 # --------------------------------------------
-st.title("📊 ML Model Deployment App with All Models + Visualizations")
+st.title("📊 Pharma Classification")
 st.write("Upload your dataset and get predictions + model comparison + visualizations")
 
 
