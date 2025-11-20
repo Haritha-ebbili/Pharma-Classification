@@ -75,12 +75,39 @@ if uploaded_file:
     st.header("🧍 Enter Patient Values")
     defaults = X.median()
 
+    # Define healthy ranges (example ranges — adjust based on your dataset)
+    healthy_ranges = {
+        "age": (18, 80),
+        "total_bilirubin": (0.1, 1.2),
+        "direct_bilirubin": (0.0, 0.3),
+        "alkphos": (44, 147),
+        "sgpt": (7, 56),
+        "sgot": (5, 40),
+        "total_proteins": (6.0, 8.3),
+        "albumin": (3.5, 5.0),
+        "ag_ratio": (1.0, 2.5)
+    }
+
     inputs = {}
+    column_alerts = []
+
     for col in X.columns:
         if col == "sex":
             inputs[col] = st.selectbox("Sex", [0, 1], format_func=lambda x: "Male" if x == 1 else "Female")
         else:
             inputs[col] = st.number_input(col, value=float(defaults[col]))
+
+            # Check if range exists
+            if col in healthy_ranges:
+                low, high = healthy_ranges[col]
+                if not (low <= inputs[col] <= high):
+                    column_alerts.append(f"⚠️ **{col}** is outside the healthy range ({low} - {high}).")
+
+    # Show alerts
+    if column_alerts:
+        st.warning("### ⚠️ Range Alerts Detected")
+        for alert in column_alerts:
+            st.write(alert)
 
     input_data = pd.DataFrame([inputs])
     input_scaled = scaler.transform(input_data)
