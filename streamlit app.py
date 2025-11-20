@@ -51,9 +51,8 @@ page = st.sidebar.radio("Go to", ["Home", "Prediction", "Reports"])
 if page == "Home":
     st.title("🩺 Liver Disease Detection — Home")
     st.markdown(
-        "Upload a CSV (Liver_data.csv) containing the columns used by the model (including a 'category' column). (Liver_data.csv) containing the columns used by the model (including a 'category' column).
+        "Upload a CSV (Liver_data.csv) containing the columns used by the model (including a 'category' column). (Liver_data.csv) containing the columns used by the model (including a 'category' column)."
 
-" 
         "After upload, go to Prediction to enter patient values and get a score + stage prediction."
     )
 
