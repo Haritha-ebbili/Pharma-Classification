@@ -123,7 +123,7 @@ elif page == "Prediction":
                     default_val = float(df[col].median())
                     low, high = healthy_ranges.get(col, (col_min, col_max))
 
-                    val = st.number_input(col, value=default_val, format="%.4f")
+                    val = st.number_input(col, value=default_val, format="%.2f")
                     inputs[col] = val
 
                     # Show defined healthy range
