@@ -49,7 +49,7 @@ page = st.sidebar.radio("Go to", ["Home", "Prediction", "Reports"])
 # Home Page
 # ---------------------------
 if page == "Home":
-    st.title("🩺 Liver Disease Detection — Home")
+    st.title("🩺 Liver Disease Detection")
     st.markdown("Upload a CSV with the required liver dataset. After uploading, the model will train automatically.")
 
     uploaded_file = st.file_uploader("📤 Upload Liver_data.csv", type=["csv"])
@@ -81,7 +81,7 @@ if page == "Home":
 # Prediction Page
 # ---------------------------
 elif page == "Prediction":
-    st.title("🔍 Prediction & Real-time Liver Health Score")
+    st.title("🔍 Prediction & Real‑time Liver Health Score")
 
     if st.session_state.df is None:
         st.warning("Upload a dataset first on the Home page.")
