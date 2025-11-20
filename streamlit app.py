@@ -121,7 +121,7 @@ elif page == "Prediction":
                 else:
                     default_val = float(df[col].median())
                     val = st.number_input(col, value=default_val)
-                    inputs[col] = val("category", axis=1).columns]
+                    inputs[col] = val("category", axis=1).columns
 
         cols = st.columns(2)
         for i, col in enumerate(numeric_cols):
