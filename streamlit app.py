@@ -95,15 +95,24 @@ if uploaded_file:
         if col == "sex":
             inputs[col] = st.selectbox("Sex", [0, 1], format_func=lambda x: "Male" if x == 1 else "Female")
         else:
-            inputs[col] = st.number_input(col, value=float(defaults[col]))
+            block = st.container()
+            val = block.number_input(col, value=float(defaults[col]), key=col)
+            inputs[col] = val
 
-            # Check if range exists
             if col in healthy_ranges:
                 low, high = healthy_ranges[col]
-                if not (low <= inputs[col] <= high):
+                if not (low <= val <= high):
+                    block.markdown(f"<span style='color:red; font-weight:bold;'>Outside healthy range: {low} - {high}</span>", unsafe_allow_html=True)
                     column_alerts.append(f"⚠️ **{col}** is outside the healthy range ({low} - {high}).")
+                else:
+                    block.markdown(f"<span style='color:green; font-weight:600;'>Within healthy range ✔️</span>", unsafe_allow_html=True)
 
-    # Show alerts
+    # Show alerts and disease indication per feature
+    if column_alerts:
+        st.warning("### ⚠️ Range Alerts Detected — Possible Signs of Liver Disease")
+        for alert in column_alerts:
+            st.write(alert)
+        st.info("Values outside the healthy range can indicate potential liver abnormalities.")
     if column_alerts:
         st.warning("### ⚠️ Range Alerts Detected")
         for alert in column_alerts:
