@@ -49,7 +49,7 @@ page = st.sidebar.radio("Go to", ["Home", "Prediction", "Reports"])
 # Home Page
 # ---------------------------
 if page == "Home":
-    st.title("🩺 Liver Disease Detection")
+    st.title("🩺 Liver Disease Detection — Home")
     st.markdown("Upload a CSV with the required liver dataset. After uploading, the model will train automatically.")
 
     uploaded_file = st.file_uploader("📤 Upload Liver_data.csv", type=["csv"])
@@ -123,14 +123,18 @@ elif page == "Prediction":
                     default_val = float(df[col].median())
                     low, high = healthy_ranges.get(col, (col_min, col_max))
 
-                    val = st.number_input(col, min_value=col_min, max_value=col_max, value=default_val)
+                    val = st.number_input(col, value=default_val, format="%.4f")
                     inputs[col] = val
 
-                    if not (low <= val <= high):
-                        st.markdown(f"<span style='color:red; font-weight:700;'>🔴 Abnormal (Healthy: {low}–{high})</span>", unsafe_allow_html=True)
+                    # Show defined healthy range
+                    st.markdown(f"**Normal Range:** {low} – {high}")
+
+                    # Validate value
+                    if val < low or val > high:
+                        st.error(f"Abnormal — Out of Range ({low} – {high})")
                         abnormal_flags[col] = True
                     else:
-                        st.markdown("<span style='color:green; font-weight:600;'>🟢 Normal</span>", unsafe_allow_html=True)
+                        st.success("Healthy — Within Range")
                         abnormal_flags[col] = False
 
         # Health Score
