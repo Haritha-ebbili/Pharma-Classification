@@ -52,7 +52,7 @@ if page == "Home":
     st.title("🩺 Liver Disease Detection — Home")
     st.markdown(
         "Upload a CSV (Liver_data.csv) containing the columns used by the model (including a 'category' column). (Liver_data.csv) containing the columns used by the model (including a 'category' column)."
-
+ 
         "After upload, go to Prediction to enter patient values and get a score + stage prediction."
     )
 
@@ -106,12 +106,22 @@ elif page == "Prediction":
             "ag_ratio": (1.0, 2.5)
         }
 
-        st.markdown("Enter patient values using the sliders. Values outside the healthy ranges are highlighted.")
+        st.markdown("Enter patient values below.")
 
-        # Input collection with sliders and inline color feedback
+        # Input collection without sliders or color feedback
         inputs = {}
-        abnormal_flags = {}
         numeric_cols = [c for c in df.drop("category", axis=1).columns]
+
+        cols = st.columns(2)
+        for i, col in enumerate(numeric_cols):
+            with cols[i % 2]:
+                if col == "sex":
+                    val = st.selectbox("Sex", [0, 1], format_func=lambda x: "Male" if x == 1 else "Female")
+                    inputs[col] = val
+                else:
+                    default_val = float(df[col].median())
+                    val = st.number_input(col, value=default_val)
+                    inputs[col] = val("category", axis=1).columns]
 
         cols = st.columns(2)
         for i, col in enumerate(numeric_cols):
